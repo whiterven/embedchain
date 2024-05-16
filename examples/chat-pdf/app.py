@@ -84,76 +84,87 @@ def display_messages():
 
 
 def process_user_input(prompt, app):
-    with st.chat_message("user"):
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        st.markdown(prompt)
-
-    if prompt in response_cache:
-        response = response_cache[prompt]
+    # Check if the user has added any PDFs or links
+    if not st.session_state.get("add_pdf_files") and not st.session_state.get("add_website_files"):
+        # Engage in a more human-like conversation
         with st.chat_message("assistant"):
-            st.markdown(response)
-            st.session_state.messages.append({"role": "assistant", "content": response})
-        return
+            st.markdown(
+                """
+                It seems like you haven't added any PDFs or links yet. No worries! I'm here to help you with any questions you might have. 
+                Is there a particular topic or area you're interested in? Feel free to share, and I'll do my best to assist you!
+                """
+            )
+    else:
+        with st.chat_message("user"):
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            st.markdown(prompt)
 
-    with st.chat_message("assistant"):
-        msg_placeholder = st.empty()
-        msg_placeholder.markdown("Thinking...")
+        if prompt in response_cache:
+            response = response_cache[prompt]
+            with st.chat_message("assistant"):
+                st.markdown(response)
+                st.session_state.messages.append({"role": "assistant", "content": response})
+            return
 
-        full_response = ""
-        q = queue.Queue()
+        with st.chat_message("assistant"):
+            msg_placeholder = st.empty()
+            msg_placeholder.markdown("Thinking...")
 
-        def app_response(result):
-            llm_config = app.llm.config.as_dict()
-            llm_config["callbacks"] = [StreamingStdOutCallbackHandlerYield(q=q)]
-            config = BaseLlmConfig(**llm_config)
-            answer, citations = app.chat(prompt, config=config, citations=True)
-            result["answer"] = answer
-            result["citations"] = citations
+            full_response = ""
+            q = queue.Queue()
 
-        results = {}
-        thread = threading.Thread(target=app_response, args=(results,))
-        thread.start()
+            def app_response(result):
+                llm_config = app.llm.config.as_dict()
+                llm_config["callbacks"] = [StreamingStdOutCallbackHandlerYield(q=q)]
+                config = BaseLlmConfig(**llm_config)
+                answer, citations = app.chat(prompt, config=config, citations=True)
+                result["answer"] = answer
+                result["citations"] = citations
 
-        for answer_chunk in generate(q):
-            full_response += answer_chunk
+            results = {}
+            thread = threading.Thread(target=app_response, args=(results,))
+            thread.start()
+
+            for answer_chunk in generate(q):
+                full_response += answer_chunk
+                msg_placeholder.markdown(full_response)
+
+            thread.join()
+
+            answer, citations = results.get("answer", ""), results.get("citations", [])
+            if citations:
+                full_response += "\n\n**Sources**:\n"
+                sources = []
+                for citation in citations:
+                    source = citation[1]["url"]
+                    pattern = re.compile(r"([^/]+)\.[^\.]+\.pdf$")
+                    match = pattern.search(source)
+                    if match:
+                        source = match.group(1) + ".pdf"
+                    sources.append(source)
+                sources = list(set(sources))
+                for source in sources:
+                    full_response += f"- {source}\n"
+
             msg_placeholder.markdown(full_response)
+            st.session_state.messages.append({"role": "assistant", "content": full_response})
 
-        thread.join()
+            # Cache the response
+            response_cache[prompt] = full_response
 
-        answer, citations = results.get("answer", ""), results.get("citations", [])
-        if citations:
-            full_response += "\n\n**Sources**:\n"
-            sources = []
-            for citation in citations:
-                source = citation[1]["url"]
-                pattern = re.compile(r"([^/]+)\.[^\.]+\.pdf$")
-                match = pattern.search(source)
-                if match:
-                    source = match.group(1) + ".pdf"
-                sources.append(source)
-            sources = list(set(sources))
-            for source in sources:
-                full_response += f"- {source}\n"
-
-        msg_placeholder.markdown(full_response)
-        st.session_state.messages.append({"role": "assistant", "content": full_response})
-
-        # Cache the response
-        response_cache[prompt] = full_response
-
-        # Collect user feedback
-        if st.button("Is this answer helpful?"):
-            feedback = st.radio("Feedback", ["Yes", "No"])
-            if feedback == "No":
-                st.text_input("What was wrong with the answer?", key="feedback_input")
-                st.button("Submit Feedback")
+            # Collect user feedback
+            if st.button("Is this answer helpful?"):
+                feedback = st.radio("Feedback", ["Yes", "No"])
+                if feedback == "No":
+                    st.text_input("What was wrong with the answer?", key="feedback_input")
+                    st.button("Submit Feedback")
 
 
 
 
 
-st.title("📚Raven - Chat with PDF📚 & Links🔗")
-styled_caption = '<p style="font-size: 10px; color: #aaa;">🚀 An <a href="https://github.com/embedchain/embedchain">Raven</a> app powered by OpenAI!</p>'
+st.title("Chat with Raven 🤖")
+styled_caption = '<p style="font-size: 8px; color: #aaa;">🚀 An <a href="https://github.com/embedchain/embedchain">Embedchain</a> app powered by OpenAI!</p>'
 st.markdown(styled_caption, unsafe_allow_html=True)
 
 if "messages" not in st.session_state:
@@ -161,8 +172,11 @@ if "messages" not in st.session_state:
         {
             "role": "assistant",
             "content": """
-                Hi! I'm Seyyidi a powerful chatbot, which can answer questions about your pdf documents.\n
-                Upload your pdf documents or links here and I'll answer your questions about them! 
+                Hey there 👋! I'm Raven🤖., my human friends call me Seyyidi.
+                I'm great at answering questions about PDF docs 📄 and links 🔗. 
+                Drop your PDFs or links here and let's chat! 
+                Even if you don't have a link, we can still chat about anything 😊. 
+                Go ahead, ask me anything! 
             """,
         }
     ]
@@ -210,7 +224,7 @@ with st.sidebar:
 
 display_messages()
 
-st.write("## Chat with your PDFs & Link")
+st.write("## Raven🤖")
 
 
 if prompt := st.chat_input("Ask me anything!"):
@@ -220,3 +234,4 @@ if prompt := st.chat_input("Ask me anything!"):
 
         app = get_ec_app(st.session_state.api_key)
         process_user_input(prompt, app)
+    
