@@ -15,8 +15,6 @@ from cachetools import TTLCache
 # Initialize cache for storing responses
 response_cache = TTLCache(maxsize=100, ttl=300)
 
-HF_API_KEY = "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"
-
 def embedchain_bot(db_path, api_key):
     return App.from_config(
         config={
