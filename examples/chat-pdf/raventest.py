@@ -19,11 +19,11 @@ def embedchain_bot(db_path, api_key):
     return App.from_config(
         config={
             "llm": {
-                "provider": "huggingface",
+                "provider": "openai",
                 "config": {
-                    "model": "mistralai/Mistral-7B-Instruct-v0.2",
-                    "temperature": 0.5,
-                    "max_tokens": 1000,
+                    "model": "gpt-3.5-turbo-16k",  # Use a model with a higher token limit if available
+                    "temperature": 0.7,  # Increase temperature for more creative and detailed responses
+                    "max_tokens": 2048,
                     "top_p": 1,
                     "stream": True,
                     "api_key": api_key,
@@ -33,7 +33,7 @@ def embedchain_bot(db_path, api_key):
                 "provider": "chroma",
                 "config": {"collection_name": "chat-pdf", "dir": db_path, "allow_reset": True},
             },
-            "embedder": {"provider": "huggingface", "config": {"api_key": api_key}},
+            "embedder": {"provider": "openai", "config": {"api_key": api_key}},
             "chunker": {"chunk_size": 2000, "chunk_overlap": 0, "length_function": "len"},
         }
     )
@@ -43,12 +43,12 @@ def get_db_path():
     return tempfile.mkdtemp()
 
 
-def get_ec_app():
+def get_ec_app(api_key):
     if "app" in st.session_state:
         app = st.session_state.app
     else:
         db_path = get_db_path()
-        app = embedchain_bot(db_path, HF_API_KEY)
+        app = embedchain_bot(db_path, api_key)
         st.session_state.app = app
     return app
 
@@ -161,7 +161,7 @@ def clear_chat_history():
 
 
 st.title("Chat with Raven 🤖")
-styled_caption = '<p style="font-size: 8px; color: #aaa;">🚀 An <a href="https://github.com/embedchain/embedchain">Embedchain</a> app powered by Hugging Face!</p>'
+styled_caption = '<p style="font-size: 8px; color: #aaa;">🚀 An <a href="https://github.com/embedchain/embedchain">Embedchain</a> app powered by OpenAI!</p>'
 st.markdown(styled_caption, unsafe_allow_html=True)
 
 if "messages" not in st.session_state:
@@ -170,7 +170,7 @@ if "messages" not in st.session_state:
             "role": "assistant",
             "content": """
                 Hey there 👋! I'm Raven🤖, my human friends call me Seyyidi.
-                I'm great at answering questions about PDF docs 📄 webisite link and YouTube links 🔗. 
+                I'm great at answering questions about PDF docs 📄 and links 🔗. 
                 Drop your PDFs or links here and let's chat! 
                 Even if you don't have a link, we can still chat about anything 😊. 
                 Go ahead, ask me anything!  
@@ -179,15 +179,23 @@ if "messages" not in st.session_state:
     ]
 
 with st.sidebar:
+    openai_access_token = st.text_input("OpenAI API Key", key="api_key", type="password")
+    "WE DO NOT STORE YOUR OPENAI KEY."
+    "Just paste your OpenAI API key here and we'll use it to power the chatbot. [Get your OpenAI API key](https://platform.openai.com/api-keys)"
+
+    if st.session_state.api_key:
+        app = get_ec_app(st.session_state.api_key)
+
     pdf_files = st.file_uploader("Upload your PDF files", accept_multiple_files=True, type="pdf")
     add_pdf_files = st.session_state.get("add_pdf_files", [])
-
-    app = get_ec_app()
 
     for pdf_file in pdf_files:
         file_name = pdf_file.name
         if file_name in add_pdf_files:
             continue
+        if not st.session_state.api_key:
+            st.error("Please enter your OpenAI API Key")
+            st.stop()
         message = add_pdf_to_knowledge_base(pdf_file, app)
         st.markdown(message)
         if "Error" not in message:
@@ -200,6 +208,9 @@ with st.sidebar:
 
     link = st.text_input("Enter your link")
     if link:
+        if not st.session_state.api_key:
+            st.error("Please enter your OpenAI API Key")
+            st.stop()
         message = add_link_to_knowledge_base(link, app)
         st.markdown(message)
         if "Error" not in message:
@@ -207,9 +218,20 @@ with st.sidebar:
 
     youtube_link = st.text_input("Enter your YouTube link")
     if youtube_link:
+        if not st.session_state.api_key:
+            st.error("Please enter your OpenAI API Key")
+            st.stop()
         message = add_youtube_to_knowledge_base(youtube_link, app)
         st.markdown(message)
         if "Error" not in message:
             st.session_state.messages.append({"role": "assistant", "content": message})
 
 display_messages()
+
+if prompt := st.chat_input("Ask me anything!"):
+    if not st.session_state.api_key:
+        st.error("Please enter your OpenAI API Key", icon="🤖")
+        st.stop()
+
+    app = get_ec_app(st.session_state.api_key)
+    process_user_input(prompt, app)
