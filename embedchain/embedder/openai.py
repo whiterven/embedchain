@@ -8,6 +8,7 @@ from embedchain.config import BaseEmbedderConfig
 from embedchain.embedder.base import BaseEmbedder
 from embedchain.models import VectorDimensions
 
+os.environ["OPENAI_API_KEY"] = "sk-proj-tfLVJ51DwBW5Bc8GlYTUT3BlbkFJWyM24isTQmfkkKanMWzQ"
 
 class OpenAIEmbedder(BaseEmbedder):
     def __init__(self, config: Optional[BaseEmbedderConfig] = None):
