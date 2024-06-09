@@ -22,8 +22,8 @@ def embedchain_bot(db_path, api_key):
                 "provider": "huggingface",
                 "config": {
                     "model": "mistralai/Mistral-7B-Instruct-v0.2",
-                    "temperature": 0.7,
-                    "max_tokens": 2048,
+                    "temperature": 0.5,
+                    "max_tokens": 1000,
                     "top_p": 1,
                     "stream": True,
                     "api_key": api_key,
