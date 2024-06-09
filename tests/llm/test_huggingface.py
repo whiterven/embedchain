@@ -9,15 +9,15 @@ from embedchain.llm.huggingface import HuggingFaceLlm
 
 @pytest.fixture
 def huggingface_llm_config():
-    os.environ["HUGGINGFACE_ACCESS_TOKEN"] = "test_access_token"
-    config = BaseLlmConfig(model="google/flan-t5-xxl", max_tokens=50, temperature=0.7, top_p=0.8)
+    os.environ["HUGGINGFACE_ACCESS_TOKEN"] = "HUGGINGFACE_ACCESS_TOKEN"
+    config = BaseLlmConfig(model="google/flan-t5-xxl", max_tokens=1000, temperature=0.7, top_p=0.8)
     yield config
     os.environ.pop("HUGGINGFACE_ACCESS_TOKEN")
 
 
 @pytest.fixture
 def huggingface_endpoint_config():
-    os.environ["HUGGINGFACE_ACCESS_TOKEN"] = "test_access_token"
+    os.environ["HUGGINGFACE_ACCESS_TOKEN"] = "HUGGINGFACE_ACCESS_TOKEN"
     config = BaseLlmConfig(endpoint="https://api-inference.huggingface.co/models/gpt2", model_kwargs={"device": "cpu"})
     yield config
     os.environ.pop("HUGGINGFACE_ACCESS_TOKEN")
